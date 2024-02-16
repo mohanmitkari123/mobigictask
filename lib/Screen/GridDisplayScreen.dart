@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -15,92 +17,52 @@ class _GridDisplayScreenState extends State<GridDisplayScreen> {
   String searchText = '';
   List<Offset> matchedCells = [];
 
+
   @override
   void initState() {
     super.initState();
     filteredGrid = widget.grid;
   }
 
-  // void _searchGrid() {
-  //   setState(() {
-  //     matchedCells.clear();
-  //     if (searchText.isEmpty) {
-  //       setState(() {
-  //         filteredGrid = widget.grid;
-  //       });                             //Reset to original grid if search text is empty
-  //     } else {
-  //       filteredGrid = [];
-  //       if (widget.grid.isNotEmpty && widget.grid[0].isNotEmpty) {
-  //         filteredGrid = widget.grid.where((row) => row.any((cell) => cell.toLowerCase().contains(searchText.toLowerCase()))).toList();
-  //         for (int i = 0; i < widget.grid.length; i++) {
-  //           for (int j = 0; j < widget.grid[i].length; j++) {
-  //             if (widget.grid[i][j].toLowerCase().contains(searchText.toLowerCase())) {
-  //               matchedCells.add(Offset(i.toDouble(), j.toDouble()));
-  //             }
-  //           }
-  //         }
-  //       }
-  //     }
-  //   });
-  // }
-
   void _searchGrid() {
     setState(() {
       matchedCells.clear();
-      if (widget.grid.isNotEmpty && widget.grid[0].isNotEmpty) {
-        for (int i = 0; i < widget.grid.length; i++) {
-          for (int j = 0; j < widget.grid[i].length; j++) {
-            if (_searchInDirections(i, j)) {
-              matchedCells.add(Offset(i.toDouble(), j.toDouble()));
-            }
+      List<String> searchList = searchText.toUpperCase().split('');
+      bool foundMatch = false;
+      for (int i = 0; i < widget.grid.length; i++) {
+        for (int j = 0; j < widget.grid[i].length; j++) {
+          if (_checkForText(i, j, widget.grid, searchList)) {
+            matchedCells.add(Offset(i.toDouble(), j.toDouble()));
+            foundMatch = true;
           }
         }
       }
-      if (matchedCells.isEmpty) {
-        // Show a snackbar or dialog with a hint
-        Get.snackbar('Message', 'The searched text was not found in the grid.',backgroundColor: Colors.redAccent);
+      if (!foundMatch) {
+        // Show a snackbar indicating no matches were found
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No matches found'),
+          ),
+        );
       }
     });
   }
 
-  bool _searchInDirections(int row, int col) {
-    String text = searchText.toLowerCase();
-    String cellText = widget.grid[row][col].toLowerCase();
-
-    // Check east direction
-    if (col + text.length <= widget.grid[0].length) {
-      String eastText = '';
-      for (int i = col; i < col + text.length; i++) {
-        eastText += widget.grid[row][i].toLowerCase();
+  bool _checkForText(int row, int col, List<List<String>> grid, List<String> searchList) {
+    bool foundMatch = false;
+    for (String searchChar in searchList) {
+      if (row < grid.length && col < grid[row].length && grid[row][col].toUpperCase() == searchChar) {
+        matchedCells.add(Offset(row.toDouble(), col.toDouble()));
+        foundMatch = true;
       }
-      if (eastText == text) return true;
     }
-
-    // Check south direction
-    if (row + text.length <= widget.grid.length) {
-      String southText = '';
-      for (int i = row; i < row + text.length; i++) {
-        southText += widget.grid[i][col].toLowerCase();
-      }
-      if (southText == text) return true;
-    }
-
-    // Check south-east direction
-    if (row + text.length <= widget.grid.length && col + text.length <= widget.grid[0].length) {
-      String southEastText = '';
-      for (int i = 0; i < text.length; i++) {
-        southEastText += widget.grid[row + i][col + i].toLowerCase();
-      }
-      if (southEastText == text) return true;
-    }
-
-    return false;
+    return foundMatch;
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true,
         title: Text('Grid Display'),
       ),
       body: Padding(
@@ -124,9 +86,7 @@ class _GridDisplayScreenState extends State<GridDisplayScreen> {
             ),
             SizedBox(height: 20.0),
             Expanded(
-              child: filteredGrid.isEmpty
-                  ? Center(child: Text('No data available'))
-                  : GridView.builder(
+              child: GridView.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: filteredGrid.isNotEmpty ? filteredGrid[0].length : 0,
                   crossAxisSpacing: 4.0,
